@@ -61,6 +61,7 @@ def main():
     logging.debug('Mode: %s', options.mode)
     logging.debug('Quality: %s', options.quality)
     logging.debug('Output: %s', options.outputFile)
+    logging.debug('OutputDirectory: %s', options.outputDir)
     logging.debug('VlcCmd: %s', options.vlcCmd)
     logging.debug('WebCmd: %s', options.webCmd)
 
@@ -76,7 +77,14 @@ def main():
 
     if options.mode != 'play':
         # Avoid overwriting any existing files by adding a timestamp
-        if os.path.exists(options.outputFile):
+        if not os.path.exists(options.outputDir):
+            try:
+                os.makedirs(options.outputDir)
+            except:
+                logging.error('%d could not be created' % options.outputDir)
+        outputPath = os.path.abspath(os.path.join(options.outputDir,
+            options.outputFile))
+        if os.path.exists(outputPath):
             newFileName = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S_')
             newFileName = newFileName + options.outputFile
             logging.warning('%s exists, saving as %s instead.', options.outputFile, newFileName)
@@ -102,9 +110,11 @@ def main():
         if (options.mode == 'play'):
             outputFiles.append('-')
         elif i == 0:
-            outputFiles.append(options.outputFile)
+            outputFiles.append(os.path.abspath(os.path.join(options.outputDir,
+                options.outputFile)))
         else:
-            outputFiles.append('alternate-' + options.outputFile)
+            outputFiles.append(os.path.abspath(os.path.join(options.outputDir,
+                'alternate-' + options.outputFile)))
 
     # Create shell commands
     cmds = []
@@ -276,6 +286,7 @@ def parseOptions(vlcCmdDefault, webCmdDefault):
     parser.add_option('-v', '--vlccmd', '-c', '--command', dest = 'vlcCmd', help = 'Custom command for playing stream from stdout')
     parser.add_option('-w', '--webcmd', dest = 'webCmd', help = 'Custom command for producing stream on stdout')
     parser.add_option('-d', '--buffer-time', dest = 'cache', help = 'VLC cache size in [ms]')
+    parser.add_option('-b', '--output-dir', dest = 'outputDir', help = 'Directory to write file to (Default = ".")')
 
     parser.set_defaults(vlcCmd = vlcCmdDefault)
     parser.set_defaults(webCmd = webCmdDefault)
@@ -285,6 +296,7 @@ def parseOptions(vlcCmdDefault, webCmdDefault):
     parser.set_defaults(mode = 'play')  # Want to play the stream by default
     parser.set_defaults(kt = '18:00')  # If we are scheduling a recording, do it at 18:00 KST by default
     parser.set_defaults(cache = 30000)  # Caching 30s by default
+    parser.set_defaults(outputDir = '.')  # Save to current directory by default
     options, args = parser.parse_args()
     # additional sanity checks
     if len(args):
